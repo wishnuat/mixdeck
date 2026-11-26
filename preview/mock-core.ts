@@ -1,8 +1,16 @@
 // Browser-only stand-in for @tauri-apps/api/core (UI review + screenshots).
-import { emitMock, MIXER } from "./mock-state";
+import { emitMock, MIXER, TABS } from "./mock-state";
 
 export async function invoke(cmd: string, args?: any): Promise<any> {
   switch (cmd) {
+    case "get_tabs": return structuredClone(TABS);
+    case "get_browser_status": return { registered: true, error: null, extensionId: "pkjnmnolfphodjljfffplljmkgeppgjk" };
+    case "set_tab_volume": {
+      const t = TABS[0].tabs.find((x) => x.id === args.tabId);
+      if (t) t.volume = args.volume;
+      emitMock("tabs", structuredClone(TABS));
+      return;
+    }
     case "get_mixer": return structuredClone(MIXER);
     case "get_autostart": return true;
     case "set_autostart": return args.on;

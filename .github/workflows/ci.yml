@@ -24,6 +24,10 @@ jobs:
         run: npx tsc --noEmit
       - name: Build frontend (embedded by the Rust crate)
         run: npm run build
+      - name: Extension behaviour tests (headless Chrome)
+        run: |
+          pip install playwright
+          python -u extension/tests/test_page_gain.py
       - name: Engine tests
         working-directory: src-tauri
         run: cargo test --locked

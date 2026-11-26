@@ -40,6 +40,30 @@ export interface Osd {
   hasAudio: boolean;
 }
 
+export interface Tab {
+  id: number;
+  title: string;
+  host: string;
+  favIconUrl: string;
+  audible: boolean;
+  muted: boolean;
+  volume: number;
+  active: boolean;
+}
+
+export interface BrowserTabs {
+  conn: number;
+  browser: string; // executable key, matches AppInfo.key
+  name: string;
+  tabs: Tab[];
+}
+
+export interface BrowserStatus {
+  registered: boolean;
+  error: string | null;
+  extensionId: string;
+}
+
 export const EMPTY_MIXER: Mixer = {
   devices: [], deviceId: "", followDefault: true, masterVolume: 0, masterMuted: false, apps: [], remember: true, error: null,
 };

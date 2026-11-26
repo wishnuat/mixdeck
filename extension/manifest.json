@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Mixdeck: tab volume",
+  "short_name": "Mixdeck",
+  "version": "0.2.0",
+  "description": "Per-tab volume for Chrome and Edge. Works on its own, and appears inside the Mixdeck tray mixer when it's running.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyrkTe/ZFjwx8jLvmBek0c7IICl0jSqUtgrW07zM/RT50JYzNbEp0KiuBEXayrsGK3p9m+s7kuEQ3qXlS6QAh68wcS4DSiDR/WDlpwJxA0VXXYl9PP3/kiF+DUIlB+oEIbMqfqSSNBOF8hZzhlbUKw1SEtf4qpXBBDrUOzsU9nkTEeZIshVEzMH/sQzDvoOat2dGROov3EyFXHDeHTomqbxnUlNbnPpl3fbgwAUBOutkIIpv9B93peJRSQSKKNYT6Fbn4xz0faVd8q8gxg78uqQV4bwxsneAU01zm92TeulapyeYvvy+YmB+Gush/BpU6nsFGkQ86XyKiXaDF6FMO+wIDAQAB",
+  "permissions": ["tabs", "nativeMessaging", "storage"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["page-gain.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["relay.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "action": { "default_title": "Mixdeck: tab volume", "default_popup": "popup.html" },
+  "icons": { "32": "icons/32.png", "128": "icons/128.png" }
+}

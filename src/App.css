@@ -158,3 +158,37 @@ html[data-view="osd"] body { pointer-events: none; }
 .hovermute { position: absolute; inset: 4px; border-radius: 7px; display: grid; place-items: center; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .12s; }
 .hovermute .ico { width: 20px; height: 20px; }
 .appicon:hover .hovermute, .appicon:focus-visible .hovermute { opacity: 1; }
+
+/* ---------------------------------------------------------------- browser tabs (phase 2) */
+.appwrap { list-style: none; display: flex; flex-direction: column; border-radius: 8px; }
+.appwrap.open { background: var(--card); }
+.appwrap.open > .app { background: transparent; }
+.tabtoggle { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--accent); padding: 2px 6px; border-radius: 5px; flex: none; }
+.tabtoggle:hover { background: var(--card-hover); }
+.chev { transition: transform .15s; }
+.tabs { list-style: none; margin: 0 0 6px 30px; padding: 0 0 0 10px; border-left: 2px solid var(--stroke); display: flex; flex-direction: column; gap: 2px; }
+.tab { display: grid; grid-template-columns: 26px 1fr 40px; gap: 8px; align-items: center; padding: 4px 10px 4px 2px; border-radius: 6px; }
+.tab:hover { background: var(--card-hover); }
+.tabicon { position: relative; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; }
+.tabicon:hover { background: var(--card-hover); }
+.tabicon img { width: 16px; height: 16px; border-radius: 3px; }
+.tab.muted .tabicon img, .tab.muted .initial { filter: grayscale(1); opacity: .45; }
+.tab .label { font-weight: 500; font-size: 12px; }
+.tab .pct { font-size: 12.5px; }
+.mutedbadge.sm { width: 13px; height: 13px; right: -1px; bottom: -1px; }
+.mutedbadge.sm .ico { width: 9px; height: 9px; }
+.slider.thin { height: 16px; }
+.slider.thin input::-webkit-slider-thumb { width: 14px; height: 14px; border-width: 3px; }
+
+.browsers { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--stroke); }
+.steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.steps code, .browsers code { font-size: 11.5px; padding: 0 4px; border-radius: 4px; background: var(--card-hover); }
+.btn { align-self: flex-start; padding: 6px 12px; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; font-size: 12px; }
+@media (prefers-color-scheme: dark) { .btn { color: #000; } }
+.btn:hover { filter: brightness(1.08); }
+.path { word-break: break-all; }
+.linked { display: flex; flex-direction: column; gap: 4px; }
+.linked .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #16a34a; margin-right: 4px; }
+/* tab title wins over the host when space is short */
+.tab .name { flex: 0 1 auto; min-width: 0; }
+.tab .sub { flex: 1 1 0; min-width: 0; }

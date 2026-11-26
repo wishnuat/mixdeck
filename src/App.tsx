@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { AppInfo, EMPTY_MIXER, Levels, Mixer } from "./types";
-import { Back, Bars, Chime, Gear, Pin, Speaker } from "./icons";
+import { AppInfo, BrowserStatus, BrowserTabs, EMPTY_MIXER, Levels, Mixer, Tab } from "./types";
+import { Back, Bars, Chevron, Chime, Gear, Pin, Speaker } from "./icons";
 import "./App.css";
 
 const pct = (v: number) => Math.round(v * 100);
@@ -43,18 +43,38 @@ export default function App() {
   const touched = useRef<Record<string, number>>({});
   const [view, setView] = useState<"mixer" | "settings">("mixer");
   const [autostart, setAutostart] = useState(false);
+  const [browsers, setBrowsers] = useState<BrowserTabs[]>([]);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem("mixdeck.collapsed") || "{}"); } catch { return {}; }
+  });
   const rootRef = useRef<HTMLDivElement>(null);
   const meter = useMeters();
 
   useEffect(() => {
     invoke<Mixer>("get_mixer").then(setMixer);
     invoke<boolean>("get_autostart").then(setAutostart);
+    invoke<BrowserTabs[]>("get_tabs").then(setBrowsers);
     const a = listen<Mixer>("mixer", (e) => setMixer(e.payload));
     const b = listen("shown", () => setView("mixer"));
+    const c = listen<BrowserTabs[]>("tabs", (e) => setBrowsers(e.payload));
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") invoke("hide_window"); };
     window.addEventListener("keydown", onKey);
-    return () => { a.then((f) => f()); b.then((f) => f()); window.removeEventListener("keydown", onKey); };
+    return () => { a.then((f) => f()); b.then((f) => f()); c.then((f) => f()); window.removeEventListener("keydown", onKey); };
   }, []);
+
+  const toggleCollapsed = (key: string) => setCollapsed((c) => {
+    const n = { ...c, [key]: !c[key] };
+    try { localStorage.setItem("mixdeck.collapsed", JSON.stringify(n)); } catch { /* ignore */ }
+    return n;
+  });
+  const tabsFor = (key: string) => browsers.filter((b) => b.browser === key).flatMap((b) => b.tabs.map((t) => ({ conn: b.conn, tab: t })));
+  const setTabVol = (conn: number, t: Tab, v: number) => {
+    v = Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+    const k = `tab:${conn}:${t.id}`;
+    touched.current[k] = Date.now();
+    setLocal((l) => ({ ...l, [k]: v }));
+    invoke("set_tab_volume", { conn, tabId: t.id, volume: v });
+  };
 
   // Size the native window to the content (bottom-anchored on the Rust side).
   useLayoutEffect(() => {
@@ -140,10 +160,29 @@ export default function App() {
                 <span>Apps appear here as soon as they open a sound stream.</span>
               </li>
             )}
-            {apps.map((a) => (
-              <AppRow key={a.key} app={a} value={valueOf(a.key, a.volume)} meterRef={meter(a.key)}
-                onChange={(v) => setVol(a.key, v)} onWheel={wheel(a.key, valueOf(a.key, a.volume))} />
-            ))}
+            {apps.map((a) => {
+              const tabs = tabsFor(a.key);
+              const open = tabs.length > 0 && !collapsed[a.key];
+              return (
+                <AppRow key={a.key} app={a} value={valueOf(a.key, a.volume)} meterRef={meter(a.key)}
+                  onChange={(v) => setVol(a.key, v)} onWheel={wheel(a.key, valueOf(a.key, a.volume))}
+                  tabCount={tabs.length} open={open} onToggle={() => toggleCollapsed(a.key)}>
+                  {open && (
+                    <ul className="tabs">
+                      {tabs.map(({ conn, tab }) => {
+                        const k = `tab:${conn}:${tab.id}`;
+                        const v = valueOf(k, tab.volume);
+                        return (
+                          <TabRow key={k} tab={tab} value={v} onChange={(x) => setTabVol(conn, tab, x)}
+                            onMute={() => invoke("set_tab_mute", { conn, tabId: tab.id, muted: !tab.muted })}
+                            onWheel={(e) => setTabVol(conn, tab, v + (e.deltaY < 0 ? 0.02 : -0.02))} />
+                        );
+                      })}
+                    </ul>
+                  )}
+                </AppRow>
+              );
+            })}
             {system && (
               <AppRow key={system.key} app={system} value={valueOf(system.key, system.volume)} meterRef={meter(system.key)}
                 onChange={(v) => setVol(system.key, v)} onWheel={wheel(system.key, valueOf(system.key, system.volume))} />
@@ -156,17 +195,19 @@ export default function App() {
           </footer>
         </>
       ) : (
-        <Settings mixer={mixer} autostart={autostart} setAutostart={setAutostart} back={() => setView("mixer")} />
+        <Settings mixer={mixer} browsers={browsers} autostart={autostart} setAutostart={setAutostart} back={() => setView("mixer")} />
       )}
     </div>
   );
 }
 
-function AppRow({ app, value, meterRef, onChange, onWheel }: {
+function AppRow({ app, value, meterRef, onChange, onWheel, tabCount = 0, open = false, onToggle, children }: {
   app: AppInfo; value: number; meterRef: (el: HTMLElement | null) => void; onChange: (v: number) => void; onWheel: (e: React.WheelEvent) => void;
+  tabCount?: number; open?: boolean; onToggle?: () => void; children?: React.ReactNode;
 }) {
   return (
-    <li className={`app ${app.active ? "playing" : ""} ${app.muted ? "muted" : ""}`} onWheel={onWheel}>
+    <li className={`appwrap ${open ? "open" : ""}`}>
+    <div className={`app ${app.active ? "playing" : ""} ${app.muted ? "muted" : ""}`} onWheel={onWheel}>
       <button className="appicon" title={app.muted ? `Unmute ${app.name}` : `Mute ${app.name}`}
         onClick={() => invoke("set_mute", { key: app.key, muted: !app.muted })}>
         {app.system ? <span className="sysicon"><Chime /></span>
@@ -180,8 +221,43 @@ function AppRow({ app, value, meterRef, onChange, onWheel }: {
           <span className="name" title={app.name}>{app.name}</span>
           {app.active && !app.muted && <Bars />}
           {app.remembered && <span className="pin" title="Volume is remembered and restored when the app restarts"><Pin /></span>}
+          {tabCount > 0 && (
+            <button className="tabtoggle" onClick={onToggle} title={open ? "Hide tabs" : "Show tabs"}>
+              <Chevron open={open} /> {tabCount} tab{tabCount > 1 ? "s" : ""}
+            </button>
+          )}
         </div>
         <Slider value={value} muted={app.muted} meterRef={meterRef} onChange={onChange} label={`${app.name} volume`} />
+      </div>
+      <Pct value={value} onReset={() => onChange(1)} />
+    </div>
+    {children}
+    </li>
+  );
+}
+
+function TabRow({ tab, value, onChange, onMute, onWheel }: {
+  tab: Tab; value: number; onChange: (v: number) => void; onMute: () => void; onWheel: (e: React.WheelEvent) => void;
+}) {
+  const [iconOk, setIconOk] = useState(true);
+  return (
+    <li className={`tab ${tab.muted ? "muted" : ""}`} onWheel={onWheel}>
+      <button className="tabicon" onClick={onMute} title={tab.muted ? "Unmute tab" : "Mute tab"}>
+        {tab.favIconUrl && iconOk
+          ? <img src={tab.favIconUrl} alt="" draggable={false} onError={() => setIconOk(false)} />
+          : <span className="initial sm">{(tab.host || tab.title).slice(0, 1).toUpperCase()}</span>}
+        {tab.muted && <span className="mutedbadge sm"><Speaker level={0} muted /></span>}
+      </button>
+      <div className="body">
+        <div className="label">
+          <span className="name" title={tab.title}>{tab.title}</span>
+          {tab.audible && !tab.muted && <Bars />}
+          <span className="sub">{tab.host}</span>
+        </div>
+        <div className={`slider thin ${tab.muted ? "muted" : ""}`} style={{ "--v": value } as React.CSSProperties}>
+          <input type="range" min={0} max={100} step={1} value={pct(value)} aria-label={`${tab.title} volume`}
+            onChange={(e) => onChange(Number(e.target.value) / 100)} />
+        </div>
       </div>
       <Pct value={value} onReset={() => onChange(1)} />
     </li>
@@ -204,8 +280,47 @@ function Pct({ value, onReset }: { value: number; onReset: () => void }) {
   return <button className="pct" title="Double-click to reset to 100%" onDoubleClick={onReset}>{pct(value)}</button>;
 }
 
-function Settings({ mixer, autostart, setAutostart, back }: {
-  mixer: Mixer; autostart: boolean; setAutostart: (v: boolean) => void; back: () => void;
+function BrowserSection({ browsers }: { browsers: BrowserTabs[] }) {
+  const [status, setStatus] = useState<BrowserStatus | null>(null);
+  const [folder, setFolder] = useState("");
+  useEffect(() => { invoke<BrowserStatus>("get_browser_status").then(setStatus); }, []);
+  const linked = [...new Map(browsers.map((b) => [b.browser, b])).values()];
+  const showFolder = async () => {
+    const dir = await invoke<string>("open_extension_folder");
+    setFolder(dir);
+    navigator.clipboard.writeText(dir).catch(() => {});
+  };
+  return (
+    <div className="browsers">
+      <div className="keystitle">Browser tabs</div>
+      {linked.length > 0 ? (
+        <div className="linked">
+          {linked.map((b) => (
+            <div key={b.browser}>
+              <span className="dot on" /> {b.name} <span className="muted-text">· linked, {browsers.filter((x) => x.browser === b.browser).reduce((n, x) => n + x.tabs.length, 0)} tabs</span>
+            </div>
+          ))}
+          <div className="muted-text">Tabs appear under the browser's row as soon as they play sound.</div>
+        </div>
+      ) : (
+        <>
+          <div className="muted-text">Control every tab separately. Add the Mixdeck extension to Chrome, Edge or Brave:</div>
+          <ol className="steps">
+            <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>)</li>
+            <li>Turn on <b>Developer mode</b></li>
+            <li><b>Load unpacked</b> → choose the extension folder</li>
+          </ol>
+          <button className="btn" onClick={showFolder}>Show extension folder</button>
+          {folder && <div className="muted-text path">Path copied: {folder}</div>}
+        </>
+      )}
+      {status && !status.registered && <div className="error">Browser link not registered: {status.error}</div>}
+    </div>
+  );
+}
+
+function Settings({ mixer, browsers, autostart, setAutostart, back }: {
+  mixer: Mixer; browsers: BrowserTabs[]; autostart: boolean; setAutostart: (v: boolean) => void; back: () => void;
 }) {
   const remembered = mixer.apps.filter((a) => a.remembered);
   return (
@@ -230,6 +345,7 @@ function Settings({ mixer, autostart, setAutostart, back }: {
           ))}
         </div>
       )}
+      <BrowserSection browsers={browsers} />
       <div className="keys">
         <div className="keystitle">Shortcuts (work in any app)</div>
         <div><span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>↑</kbd></span>Active app +5%</div>
@@ -239,7 +355,7 @@ function Settings({ mixer, autostart, setAutostart, back }: {
         <div><span>Double-click %</span>Reset to 100%</div>
       </div>
       <footer className="foot">
-        <span className="muted-text">Mixdeck 0.1 · MIT</span>
+        <span className="muted-text">Mixdeck 0.2 · MIT</span>
         <button className="link danger" onClick={() => invoke("quit")}>Quit Mixdeck</button>
       </footer>
     </div>

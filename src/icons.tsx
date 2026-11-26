@@ -40,6 +40,12 @@ export const Chime = () => (
   </svg>
 );
 
+export const Chevron = ({ open }: { open: boolean }) => (
+  <svg viewBox="0 0 24 24" className="ico sm chev" style={{ transform: open ? "rotate(90deg)" : "none" }} aria-hidden>
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+);
+
 export const Bars = () => (
   <span className="bars" aria-hidden><i /><i /><i /></span>
 );

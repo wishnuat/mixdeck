@@ -28,6 +28,17 @@ export const MIXER: Mixer = {
   ],
 };
 
+export const TABS = [
+  {
+    conn: 1, browser: "chrome.exe", name: "Google Chrome",
+    tabs: [
+      { id: 11, title: "Lo-fi beats to focus to – live radio", host: "youtube.com", favIconUrl: tile("#ff0033", "▶"), audible: true, muted: false, volume: 0.35, active: false },
+      { id: 12, title: "Weekly sync – Meet", host: "meet.google.com", favIconUrl: tile("#00897b", "M"), audible: true, muted: false, volume: 1, active: true },
+      { id: 13, title: "Breaking news live", host: "news.example.com", favIconUrl: "", audible: false, muted: true, volume: 0.6, active: false },
+    ],
+  },
+];
+
 const subs = new Map<string, Set<(p: unknown) => void>>();
 export function subscribe(event: string, cb: (p: unknown) => void) {
   if (!subs.has(event)) subs.set(event, new Set());

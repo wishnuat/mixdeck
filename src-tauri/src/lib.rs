@@ -1,7 +1,9 @@
 pub mod audio;
+pub mod tabs;
 pub mod winutil;
 
 use audio::{Cmd, Hooks, Memory, Mixer};
+use tabs::{BrowserTabs, TabHub};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
@@ -20,6 +22,17 @@ struct AppState {
     tx: Mutex<Sender<Cmd>>,
     last: Arc<Mutex<Mixer>>,
     hidden_at: Mutex<Instant>,
+    tabs: Mutex<Option<TabHub>>,
+    browser_status: Mutex<BrowserStatus>,
+}
+
+#[derive(serde::Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct BrowserStatus {
+    /// Native-messaging host registered for Chrome/Edge/Brave.
+    registered: bool,
+    error: Option<String>,
+    extension_id: &'static str,
 }
 
 impl AppState {
@@ -200,6 +213,41 @@ fn open_sound_settings() {
 }
 
 #[tauri::command]
+fn get_tabs(state: tauri::State<'_, AppState>) -> Vec<BrowserTabs> {
+    state.tabs.lock().unwrap().as_ref().map(|h| h.snapshot()).unwrap_or_default()
+}
+
+#[tauri::command]
+fn set_tab_volume(conn: u64, tab_id: i64, volume: f32, state: tauri::State<'_, AppState>) {
+    if let Some(h) = state.tabs.lock().unwrap().as_ref() {
+        h.send(conn, &serde_json::json!({ "type": "setVolume", "tabId": tab_id, "volume": audio::clamp01(volume) }));
+    }
+}
+
+#[tauri::command]
+fn set_tab_mute(conn: u64, tab_id: i64, muted: bool, state: tauri::State<'_, AppState>) {
+    if let Some(h) = state.tabs.lock().unwrap().as_ref() {
+        h.send(conn, &serde_json::json!({ "type": "setMute", "tabId": tab_id, "muted": muted }));
+    }
+}
+
+#[tauri::command]
+fn get_browser_status(state: tauri::State<'_, AppState>) -> BrowserStatus {
+    state.browser_status.lock().unwrap().clone()
+}
+
+/// Show the bundled extension folder in Explorer (for "Load unpacked" in chrome://extensions).
+#[tauri::command]
+fn open_extension_folder(app: AppHandle) -> Result<String, String> {
+    let bundled = app.path().resource_dir().map(|d| d.join("extension")).ok().filter(|p| p.join("manifest.json").exists());
+    let dev = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("extension");
+    let dir = bundled.unwrap_or(dev);
+    let dir = dir.canonicalize().unwrap_or(dir);
+    tauri_plugin_opener::reveal_item_in_dir(dir.join("manifest.json")).map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().trim_start_matches(r"\\?\").to_string())
+}
+
+#[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
 }
@@ -239,7 +287,27 @@ pub fn run() {
             let (tx, rx) = mpsc::channel();
             let last = Arc::new(Mutex::new(Mixer::default()));
             let osd_gen = Arc::new(AtomicU64::new(0));
-            app.manage(AppState { tx: Mutex::new(tx), last: last.clone(), hidden_at: Mutex::new(Instant::now() - Duration::from_secs(5)) });
+            app.manage(AppState { tx: Mutex::new(tx), last: last.clone(), hidden_at: Mutex::new(Instant::now() - Duration::from_secs(5)), tabs: Mutex::new(None), browser_status: Mutex::new(BrowserStatus::default()) });
+
+            // ---- browser tabs (phase 2): native host + local hub
+            {
+                let dir = handle.path().app_data_dir().unwrap_or_else(|_| tabs::app_dir());
+                let st = handle.state::<AppState>();
+                let reg = tabs::register_native_host(&dir);
+                *st.browser_status.lock().unwrap() =
+                    BrowserStatus { registered: reg.is_ok(), error: reg.err(), extension_id: tabs::EXTENSION_ID };
+                let h = handle.clone();
+                let trace = std::env::var("MIXDECK_TRACE").is_ok();
+                match tabs::start_hub(&dir, move |snap| {
+                    if trace {
+                        eprintln!("tabs {}", serde_json::to_string(&snap).unwrap_or_default());
+                    }
+                    let _ = h.emit("tabs", snap);
+                }) {
+                    Ok(hub) => *st.tabs.lock().unwrap() = Some(hub),
+                    Err(e) => st.browser_status.lock().unwrap().error = Some(format!("tab hub: {e}")),
+                }
+            }
 
             let (h1, h2, h3) = (handle.clone(), handle.clone(), handle.clone());
             std::thread::Builder::new().name("audio".into()).spawn(move || {
@@ -326,7 +394,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_mixer, set_volume, set_mute, set_master_volume, set_master_mute, select_device, set_remember, forget,
-            fit_window, hide_window, get_autostart, set_autostart, open_sound_settings, quit
+            fit_window, hide_window, get_autostart, set_autostart, open_sound_settings, quit,
+            get_tabs, set_tab_volume, set_tab_mute, get_browser_status, open_extension_folder
         ])
         .build(tauri::generate_context!())
         .expect("error while building Mixdeck")

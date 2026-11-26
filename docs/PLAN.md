@@ -37,7 +37,7 @@ Windows already has a per-app Volume Mixer, but:
 Changing the *default* output device (needs an undocumented COM interface), per-app output routing, EQ/effects,
 macOS/Linux, and per-tab control (phase 2).
 
-## Phase 2: browser tabs
+## Phase 2: browser tabs (shipped in 0.2)
 
 A Chrome/Edge extension (MV3) plus a native-messaging host built into Mixdeck. The Chrome row becomes expandable into
 its audible tabs, each with volume and mute.
@@ -78,4 +78,4 @@ All COM objects live on one dedicated thread, and the rest of the app talks to i
 3. Memory: remembered volumes and new-session inheritance
 4. Hotkeys and OSD
 5. Polish: autostart, settings, empty and error states, README, release
-6. Phase 2: browser extension
+6. Phase 2: browser extension, done: per-tab volume and mute, per-site memory, standalone popup, E2E-tested over native messaging

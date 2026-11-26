@@ -3,6 +3,7 @@
     npx vite --config preview/vite.preview.config.ts      # other terminal
     python preview/shoot.py
 """
+import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -21,7 +22,7 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch(channel="chrome", headless=True)
         for scheme in ("dark", "light"):
-            ctx = b.new_context(viewport={"width": 380, "height": 560}, color_scheme=scheme, device_scale_factor=2)
+            ctx = b.new_context(viewport={"width": 380, "height": 1000}, color_scheme=scheme, device_scale_factor=2)
             page = ctx.new_page()
             page.goto("http://localhost:1440/")
             page.evaluate(BACKDROP, scheme == "dark")
@@ -43,10 +44,8 @@ def main():
             osd.evaluate("window.__showOsd({name:'Spotify', icon:null, volume:0.35, muted:false, hasAudio:true})")
             osd.wait_for_timeout(400)
             osd.screenshot(path=str(OUT / f"osd-{scheme}.png"))
-            octx.close()
-            ctx.close()
-        b.close()
-    print("saved to", OUT)
+    print("saved to", OUT, flush=True)
+    os._exit(0)  # Chrome may hang on close; screenshots are written
 
 
 if __name__ == "__main__":

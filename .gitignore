@@ -27,3 +27,7 @@ dist-ssr
 preview/out/
 preview/vite.log
 
+preview/*.txt
+preview/*.err
+preview/*.log
+
