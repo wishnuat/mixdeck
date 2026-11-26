@@ -5,6 +5,11 @@
 **A tray mixer for Windows 11: volume per app *and per browser tab*, with live level meters, remembered volumes,
 and hotkeys for the app you're using.**
 
+![Mixdeck tutorial: tray flyout, per-app sliders, Chrome tabs, hotkeys and memory](docs/mixdeck-demo.gif)
+
+[Watch the tutorial in full quality (MP4, 40 s)](docs/mixdeck-demo.mp4). It was recorded headlessly from the real
+UI with a mocked backend; see `demo-video/`.
+
 <p>
   <img src="docs/flyout-dark.png" width="300" alt="Mixdeck flyout, dark theme" />
   <img src="docs/flyout-light.png" width="300" alt="Mixdeck flyout, light theme" />

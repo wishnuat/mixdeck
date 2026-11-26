@@ -34,7 +34,7 @@ export const TABS = [
     tabs: [
       { id: 11, title: "Lo-fi beats to focus to – live radio", host: "youtube.com", favIconUrl: tile("#ff0033", "▶"), audible: true, muted: false, volume: 0.35, active: false },
       { id: 12, title: "Weekly sync – Meet", host: "meet.google.com", favIconUrl: tile("#00897b", "M"), audible: true, muted: false, volume: 1, active: true },
-      { id: 13, title: "Breaking news live", host: "news.example.com", favIconUrl: "", audible: false, muted: true, volume: 0.6, active: false },
+      { id: 13, title: "Breaking news live", host: "news.example.com", favIconUrl: "", audible: true, muted: new URLSearchParams(location.search).has("demo") ? false : true, volume: 0.6, active: false },
     ],
   },
 ];

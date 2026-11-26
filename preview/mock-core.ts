@@ -5,6 +5,12 @@ export async function invoke(cmd: string, args?: any): Promise<any> {
   switch (cmd) {
     case "get_tabs": return structuredClone(TABS);
     case "get_browser_status": return { registered: true, error: null, extensionId: "pkjnmnolfphodjljfffplljmkgeppgjk" };
+    case "set_tab_mute": {
+      const t = TABS[0].tabs.find((x) => x.id === args.tabId);
+      if (t) { t.muted = args.muted; t.audible = !args.muted; }
+      emitMock("tabs", structuredClone(TABS));
+      return;
+    }
     case "set_tab_volume": {
       const t = TABS[0].tabs.find((x) => x.id === args.tabId);
       if (t) t.volume = args.volume;
