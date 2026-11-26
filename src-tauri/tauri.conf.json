@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Mixdeck",
+  "version": "0.1.0",
+  "identifier": "id.wishnu.mixdeck",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Mixdeck",
+        "url": "index.html",
+        "width": 380,
+        "height": 420,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "shadow": true
+      },
+      {
+        "label": "osd",
+        "title": "Mixdeck OSD",
+        "url": "index.html#osd",
+        "width": 300,
+        "height": 72,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "focus": false,
+        "shadow": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Flyout mixer and on-screen display",
+  "windows": ["main", "osd"],
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ]
+}
